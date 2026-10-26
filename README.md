@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/veilcc-icon.png" alt="VeilCC" width="88" />
+</p>
+
 # VeilCC Protect — GitHub Action
 
 Protect the functions worth stealing on every release. Your build produces a

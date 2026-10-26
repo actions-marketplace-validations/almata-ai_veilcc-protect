@@ -1,6 +1,6 @@
 name: "VeilCC Protect"
 description: "Seal or obfuscate the functions worth stealing in CI via the VeilCC API. The protection never ships in your binary."
-branding: { icon: "shield", color: "purple" }
+branding: { icon: "shield", color: "yellow" }
 inputs:
   input:
     description: "Path to the input: a compiled object (.o) to seal, or LLVM IR (.ll/.bc) to obfuscate."
