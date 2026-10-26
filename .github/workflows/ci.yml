@@ -10,6 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Shellcheck
+        run: shellcheck entrypoint.sh scripts/*.sh   # shellcheck is preinstalled on ubuntu runners
+
+      - name: Lint workflows (actionlint)
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
       - name: action.yml sanity (name, description ≤125, branding)
         run: |
           python3 - <<'PY'
