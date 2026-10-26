@@ -1,0 +1,41 @@
+name: release
+on:
+  push:
+    tags: ["v*.*.*"]        # e.g. v1.2.3 — cut a release by pushing a semver tag
+
+permissions:
+  contents: write           # create releases + move the major tag
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move the major tag (vN → this release)
+        run: |
+          set -euo pipefail
+          VER="$GITHUB_REF_NAME"            # v1.2.3
+          MAJOR="${VER%%.*}"                # v1
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$MAJOR" "$VER"
+          git push -f origin "refs/tags/$MAJOR"
+          echo "moved $MAJOR → $VER"
+
+      - name: Create / update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VER="$GITHUB_REF_NAME"
+          if gh release view "$VER" >/dev/null 2>&1; then
+            gh release edit "$VER" --title "$VER" --latest
+          else
+            gh release create "$VER" --title "$VER" --generate-notes --latest
+          fi
+          echo "released $VER"
+          echo "NOTE: Marketplace listing is a one-time manual step (see PUBLISH.md §3);"
+          echo "      after that, tick the Marketplace box when publishing each release."

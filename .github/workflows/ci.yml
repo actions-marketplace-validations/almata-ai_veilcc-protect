@@ -1,0 +1,55 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: action.yml sanity (name, description ≤125, branding)
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          s = open("action.yml").read()
+          def field(n):
+              m = re.search(rf'^{n}:\s*"?(.*?)"?\s*$', s, re.M)
+              return m.group(1) if m else None
+          name, desc = field("name"), field("description")
+          errs = []
+          if not name: errs.append("missing name")
+          if not desc: errs.append("missing description")
+          elif len(desc) > 125: errs.append(f"description is {len(desc)} chars (Marketplace max 125)")
+          if "branding" not in s: errs.append("missing branding (icon + color)")
+          if errs:
+              print("action.yml problems:"); [print(" -", e) for e in errs]; sys.exit(1)
+          print(f"ok: name={name!r}, description={len(desc)} chars, branding present")
+          PY
+
+      - name: Smoke test — api mode against a stub gateway
+        run: |
+          set -euo pipefail
+          cat > stub.py <<'PY'
+          import http.server, json, base64, hashlib
+          class H(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  n=int(self.headers.get("content-length",0)); self.rfile.read(n)
+                  art=b"SEALED-OBJECT-BYTES"; h=hashlib.sha256(art).hexdigest()
+                  body=json.dumps({"ok":True,"artifact_b64":base64.b64encode(art).decode(),
+                      "receipt":{"level":"seal","receipt_hash":h[:4]+"…"+h[-4:]},
+                      "quota":{"used":1,"limit":500}}).encode()
+                  self.send_response(200); self.send_header("content-type","application/json")
+                  self.send_header("content-length",str(len(body))); self.end_headers(); self.wfile.write(body)
+              def log_message(self,*a): pass
+          http.server.HTTPServer(("127.0.0.1",8799),H).serve_forever()
+          PY
+          python3 stub.py & sleep 1
+          echo "dummy object" > in.o
+          VEIL_INPUT=in.o VEIL_LEVEL=seal VEIL_PROTO="int f(void)" \
+          VEIL_OUTPUT=out.o VEIL_MODE=api VEIL_API_KEY=testkey VEIL_API_URL=http://127.0.0.1:8799 \
+            bash entrypoint.sh
+          test "$(cat out.o)" = "SEALED-OBJECT-BYTES" || { echo "::error::artifact not written"; exit 1; }
+          echo "smoke test passed"

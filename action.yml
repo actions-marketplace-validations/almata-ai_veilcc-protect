@@ -1,0 +1,89 @@
+name: "VeilCC Protect"
+description: "Seal or obfuscate the functions worth stealing in CI via the VeilCC API. The protection never ships in your binary."
+branding: { icon: "shield", color: "purple" }
+inputs:
+  input:
+    description: "Path to the input: a compiled object (.o) to seal, or LLVM IR (.ll/.bc) to obfuscate."
+    required: true
+  level:
+    description: "obfuscate | seal | device-bound."
+    required: false
+    default: "seal"
+  proto:
+    description: "Seal: the sealed function's C signature, e.g. 'uint32_t check_license(const char*)'."
+    required: false
+    default: ""
+  symbols:
+    description: "Comma-separated symbols to protect when the source carries no annotation (e.g. 'check_license=max')."
+    required: false
+    default: ""
+  target:
+    description: "Output triple (auto-detect | arm64-macos | x86_64-macos | x86_64-linux | aarch64-linux | x86_64-windows)."
+    required: false
+    default: "auto-detect"
+  persistent:
+    description: "Seal: cache the decrypted function (default scrubs per call). 'true' to enable."
+    required: false
+    default: "false"
+  anti-debug:
+    description: "Seal: fold a debugger-present check into the key. 'true' to enable."
+    required: false
+    default: "false"
+  key-provider:
+    description: "Device-bound: the runtime key-unwrap symbol."
+    required: false
+    default: ""
+  seed:
+    description: "Obfuscate: fixed build seed (0x…) for a reproducible build."
+    required: false
+    default: ""
+  output:
+    description: "Path to write the protected object."
+    required: false
+    default: "veil-protected.o"
+  receipt:
+    description: "Path to write the signed build receipt JSON (optional)."
+    required: false
+    default: ""
+  mode:
+    description: "'api' (hosted Protection API, your passes stay server-side) or 'local' (use a local plugin, obfuscate only)."
+    required: false
+    default: "api"
+  api-key:
+    description: "VeilCC API key (required for mode=api). Store as a secret."
+    required: false
+    default: ""
+  api-url:
+    description: "Protection API base URL."
+    required: false
+    default: "https://veilcc.com"
+  plugin:
+    description: "Path to libVeilPass.(so|dylib) (required for mode=local)."
+    required: false
+    default: ""
+outputs:
+  protected:
+    description: "Path to the protected object."
+    value: ${{ steps.veil.outputs.protected }}
+runs:
+  using: "composite"
+  steps:
+    - id: veil
+      run: bash ${{ github.action_path }}/entrypoint.sh
+      shell: bash
+      env:
+        VEIL_INPUT: ${{ inputs.input }}
+        VEIL_LEVEL: ${{ inputs.level }}
+        VEIL_PROTO: ${{ inputs.proto }}
+        VEIL_SYMBOLS: ${{ inputs.symbols }}
+        VEIL_TARGET: ${{ inputs.target }}
+        VEIL_PERSISTENT: ${{ inputs.persistent }}
+        VEIL_ANTI_DEBUG: ${{ inputs.anti-debug }}
+        VEIL_KEY_PROVIDER: ${{ inputs.key-provider }}
+        VEIL_SEED: ${{ inputs.seed }}
+        VEIL_OUTPUT: ${{ inputs.output }}
+        VEIL_RECEIPT: ${{ inputs.receipt }}
+        VEIL_MODE: ${{ inputs.mode }}
+        VEIL_API_KEY: ${{ inputs.api-key }}
+        VEIL_API_URL: ${{ inputs.api-url }}
+        VEIL_PLUGIN: ${{ inputs.plugin }}

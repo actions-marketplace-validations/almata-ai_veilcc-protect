@@ -1,0 +1,39 @@
+# Example: protect a license check on every tagged release, then publish.
+# Copy this into .github/workflows/ in your own repo and set the VEILCC_KEY secret
+# (create a key in the console → API keys).
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build-and-protect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the sensitive unit to an object
+        run: clang -O2 -c src/license.c -o license.o
+
+      - name: Protect it with VeilCC
+        id: veil
+        uses: almata-ai/veilcc-protect@v1
+        with:
+          input: license.o
+          level: seal
+          proto: "uint32_t check_license(const char*)"
+          anti-debug: true
+          output: license.sealed.o
+          receipt: build-receipt.json
+          api-key: ${{ secrets.VEILCC_KEY }}
+          # api-url: https://veilcc.com   # or your on-prem Protection API
+
+      - name: Link the protected object into the release binary
+        run: clang ${{ steps.veil.outputs.protected }} src/main.o -o app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: protected-build
+          path: |
+            app
+            build-receipt.json
