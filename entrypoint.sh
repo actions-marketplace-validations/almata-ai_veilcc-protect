@@ -69,5 +69,5 @@ if q:
     print(f"        quota: {q.get('used','?')} of {q.get('limit','?')} used this month")
 PY
 
-[ -n "${GITHUB_OUTPUT:-}" ] && echo "protected=$VEIL_OUTPUT" >> "$GITHUB_OUTPUT" || true
+if [ -n "${GITHUB_OUTPUT:-}" ]; then echo "protected=$VEIL_OUTPUT" >> "$GITHUB_OUTPUT"; fi
 rm -f "$resp"
